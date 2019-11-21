@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: hgp-test
+  datasource:
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: sa
+    url: jdbc:h2:mem:test
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      minimum-idle: 5
+      # 空闲连接存活最大时间，默认180000（3分钟）
+      idle-timeout: 180000
+      min-pool-size: 10
+      # 连接池最大连接数，默认是50
+      maximum-pool-size: 50
+      # 此属性控制从池返回的连接的默认自动提交行为,默认值：true
+      auto-commit: true
+      # 此属性控制池中连接的最长生命周期，值0表示无限生命周期，默认1800000即30分钟
+      max-lifetime: 1800000
+      validation-timeout: 2000
+      # 数据库连接超时时间,默认30秒，即30000
+      connection-timeout: 1000
+      connection-test-query: SELECT 1
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: update
+    database: h2
+  h2:
+    console:
+      path: /h2-console
+      enabled: true
+#      spring.h2.console.settings.web-allow-others=true //设置为true，h2 web consloe就可以在远程访问了。否则只能在本机访问。
+#      spring.h2.console.enabled=true                   //设置为true，程序开启时就会启动h2 web console(默认是false) 访问URL是 http://localhost:8080/h2-console
+server:
+  port: 8085
