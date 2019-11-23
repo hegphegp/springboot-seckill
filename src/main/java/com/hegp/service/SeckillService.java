@@ -19,7 +19,7 @@ public interface SeckillService {
      * @param userId
      * @return
      */
-    Result startSeckilLockError(long goodsId, long userId);
+    Result startSeckillLockError(long goodsId, long userId);
 
     /**
      * 秒杀 二、程序锁, 锁相对于事务下移
@@ -35,7 +35,7 @@ public interface SeckillService {
      * @param userId
      * @return
      */
-    Result startSeckilAopLock(long goodsId, long userId);
+    Result startSeckillAopLock(long goodsId, long userId);
 
     /**
      * 秒杀 四、数据库悲观锁
@@ -43,7 +43,7 @@ public interface SeckillService {
      * @param userId
      * @return
      */
-    Result startSeckilDBPCC_ONE(long goodsId, long userId);
+    Result startSeckillDBPCC_ONE(long goodsId, long userId);
 
     /**
      * 秒杀 五、数据库悲观锁
@@ -51,7 +51,25 @@ public interface SeckillService {
      * @param userId
      * @return
      */
-    Result startSeckilDBPCC_TWO(long goodsId, long userId);
+    Result startSeckillDBPCC_TWO(long goodsId, long userId);
+
+    /**
+     * 秒杀 六、数据库乐观锁
+     * @param goodsId
+     * @param userId
+     * @param number  购买的数量
+     * @return
+     */
+    Result startSeckillDBOCC(long goodsId, long userId, long number);
+
+    /**
+     * 秒杀 六、数据库乐观锁
+     * @param goodsId
+     * @param userId
+     * @param number  购买的数量
+     * @return
+     */
+    Result startSeckillDBOCCBySQL(long goodsId, long userId, long number);
 
     Result reduceGoodsAndSaveWithTransactional(long goodsId, long userId);
 }

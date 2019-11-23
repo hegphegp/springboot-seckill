@@ -5,10 +5,12 @@ import java.sql.Timestamp;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.Index;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "shop_goods")
+@Table(name = "shop_goods",
+		indexes={@Index(name="shop_goods_version_index", columnList="version", unique=false)})
 public class Goods implements Serializable {
 	@Id
 	private Long id;

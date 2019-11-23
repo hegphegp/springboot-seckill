@@ -7,6 +7,8 @@ import com.hegp.entity.Record;
 import com.hegp.repository.GoodsRepository;
 import com.hegp.repository.RecordRepository;
 import com.hegp.service.SeckillService;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.transform.Transformers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +17,8 @@ import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import java.sql.Timestamp;
-import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -40,7 +43,7 @@ public class SeckillServiceImpl implements SeckillService {
     @Override
     @Transactional
     public void cleanData(Long goodsId) {
-        entityManager.createNativeQuery("UPDATE shop_goods SET total=100;").executeUpdate();
+        entityManager.createNativeQuery("UPDATE shop_goods SET total=100, version=0").executeUpdate();
         entityManager.createNativeQuery("DELETE FROM shop_record").executeUpdate();
     }
 
@@ -51,15 +54,21 @@ public class SeckillServiceImpl implements SeckillService {
         Query countQuery = entityManager.createNativeQuery("SELECT total FROM shop_goods WHERE id="+goodsId);
         Integer total = Integer.parseInt(countQuery.getSingleResult().toString());
         if(total>0) {
-            return reduceGoodsAndSave(goodsId, userId);
+            return reduceGoodsAndSaveRecord(goodsId, userId);
         } else {
             return Result.error("抢购失败");
         }
     }
 
-    public Result reduceGoodsAndSave(long goodsId, long userId) {
+    public Result reduceGoodsAndSaveRecord(long goodsId, long userId) {
         //扣库存
         entityManager.createNativeQuery("UPDATE shop_goods SET total=total-1 WHERE id="+goodsId).executeUpdate();
+        //创建订单
+        saveRecord(goodsId, userId);
+        return Result.ok("成功抢到商品");
+    }
+
+    public void saveRecord(long goodsId, long userId) {
         //创建订单
         Record record = new Record();
         record.setGoodsId(goodsId);
@@ -67,18 +76,17 @@ public class SeckillServiceImpl implements SeckillService {
         record.setCreateTime(new Timestamp(System.currentTimeMillis()));
         record.setState(1);
         recordRepository.save(record);
-        return Result.ok("成功抢到商品");
     }
 
     @Override
     @Transactional
-    public Result startSeckilLockError(long goodsId, long userId) {
+    public Result startSeckillLockError(long goodsId, long userId) {
         try {
             lock.lock();
             Query countQuery = entityManager.createNativeQuery("SELECT total FROM shop_goods WHERE id="+goodsId);
             Integer total = Integer.parseInt(countQuery.getSingleResult().toString());
             if(total>0) {
-                return reduceGoodsAndSave(goodsId, userId);
+                return reduceGoodsAndSaveRecord(goodsId, userId);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -108,7 +116,7 @@ public class SeckillServiceImpl implements SeckillService {
     @Override
     @Servicelock
     @Transactional
-    public Result startSeckilAopLock(long goodsId, long userId) {
+    public Result startSeckillAopLock(long goodsId, long userId) {
         //来自码云码友<马丁的早晨>的建议 使用AOP + 锁实现
         return startSeckill(goodsId, userId);
     }
@@ -116,12 +124,12 @@ public class SeckillServiceImpl implements SeckillService {
     @Override
 //	@ServiceLimit(limitType= ServiceLimit.LimitType.IP)
     @Transactional
-    public Result startSeckilDBPCC_ONE(long goodsId, long userId) {
+    public Result startSeckillDBPCC_ONE(long goodsId, long userId) {
         //单用户抢购一件商品或者多件都没有问题
         Query countQuery = entityManager.createNativeQuery("SELECT total FROM shop_goods WHERE id="+goodsId+" FOR UPDATE ");
         Integer total =  Integer.parseInt(countQuery.getSingleResult().toString());
         if(total>0){
-            return reduceGoodsAndSave(goodsId, userId);
+            return reduceGoodsAndSaveRecord(goodsId, userId);
         } else {
             return Result.error("抢购失败");
         }
@@ -129,11 +137,60 @@ public class SeckillServiceImpl implements SeckillService {
 
     @Override
     @Transactional
-    public Result startSeckilDBPCC_TWO(long goodsId, long userId) {
+    public Result startSeckillDBPCC_TWO(long goodsId, long userId) {
         //单用户抢购一件商品没有问题、但是抢购多件商品不建议这种写法
-        Integer total = entityManager.createNativeQuery("UPDATE shop_goods SET total=total-1 WHERE id="+goodsId+" AND total>0").executeUpdate();//UPDATE锁表
-        if(total>0) {
-            return reduceGoodsAndSave(goodsId, userId);
+        Integer count = entityManager.createNativeQuery("UPDATE shop_goods SET total=total-1 WHERE id="+goodsId+" AND total>0").executeUpdate();//UPDATE锁表
+        if(count>0) {
+            return reduceGoodsAndSaveRecord(goodsId, userId);
+        } else {
+            return Result.error("抢购失败");
+        }
+    }
+
+    // 多次测试发现，好像startSeckillDBOCC的方案比startSeckillDBOCCBySQL方案快几秒，不知道是不是goodsRepository.getOne(goodsId)有缓存
+    @Override
+    @Transactional
+    public Result startSeckillDBOCC(long goodsId, long userId, long number) {
+        Goods goods = goodsRepository.getOne(goodsId);
+        if (goods==null) {
+            return Result.error("系统数据库有问题，goodsId为10000的商品在数据库是必须存在的");
+        }
+        if(goods.getTotal()>=number) {//剩余的数量应该要大于等于秒杀的数量
+            //乐观锁
+            String sql = "UPDATE shop_goods SET total=total-"+number+", version=version+1 WHERE id="+goodsId+" AND version="+goods.getVersion();
+            Integer count = entityManager.createNativeQuery(sql).executeUpdate();//UPDATE锁表
+            if(count>0) {
+                //创建订单
+                saveRecord(goodsId, userId);
+                return Result.ok("成功抢到商品");
+            } else {
+                return Result.error("抢购失败");
+            }
+        } else {
+            return Result.error("抢购失败");
+        }
+    }
+
+    @Override
+    @Transactional
+    public Result startSeckillDBOCCBySQL(long goodsId, long userId, long number) {
+        List<Object[]> list= entityManager.createNativeQuery("SELECT total, version FROM shop_goods WHERE id="+goodsId).getResultList();
+        if (list==null || list.size()==0) {
+            return Result.error("系统数据库有问题，goodsId为10000的商品在数据库是必须存在的");
+        }
+        Integer total = (Integer)list.get(0)[0];
+        Integer version = (Integer)list.get(0)[1];
+        if(total>=number) {//剩余的数量应该要大于等于秒杀的数量
+            //乐观锁
+            String sql = "UPDATE shop_goods SET total=total-"+number+", version=version+1 WHERE id="+goodsId+" AND version="+version;
+            Integer count = entityManager.createNativeQuery(sql).executeUpdate();//UPDATE锁表
+            if(count>0) {
+                //创建订单
+                saveRecord(goodsId, userId);
+                return Result.ok("成功抢到商品");
+            } else {
+                return Result.error("抢购失败");
+            }
         } else {
             return Result.error("抢购失败");
         }
@@ -142,6 +199,6 @@ public class SeckillServiceImpl implements SeckillService {
     @Override
     @Transactional
     public Result reduceGoodsAndSaveWithTransactional(long goodsId, long userId) {
-        return reduceGoodsAndSave(goodsId, userId);
+        return reduceGoodsAndSaveRecord(goodsId, userId);
     }
 }

@@ -25,7 +25,7 @@ public class Application implements CommandLineRunner {
         goods.setId(10000L);
         goods.setName("小米手机");
         goods.setTotal(100);
-        goods.setVersion(10000);
+        goods.setVersion(0);
         goods.setCreateTime(new Timestamp(System.currentTimeMillis()));
         goodsRepository.save(goods);
     }

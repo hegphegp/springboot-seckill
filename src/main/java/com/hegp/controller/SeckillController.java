@@ -87,7 +87,7 @@ public class SeckillController {
                 final long userId = i;
                 Runnable task = () -> {
                     if (error) {
-                        seckillService.startSeckilLockError(goodsId, userId);
+                        seckillService.startSeckillLockError(goodsId, userId);
                     } else {
                         seckillService.startSeckilLock(goodsId, userId);
                     }
@@ -118,7 +118,7 @@ public class SeckillController {
             for (int i = 0; i < 1000; i++) {
                 final long userId = i;
                 Runnable task = () -> {
-                    seckillService.startSeckilAopLock(goodsId, userId);
+                    seckillService.startSeckillAopLock(goodsId, userId);
                     latch.countDown();
                 };
                 executor.execute(task);
@@ -143,11 +143,11 @@ public class SeckillController {
             int skillNum = 1000;
             seckillService.cleanData(goodsId);
             final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
-            final long killId =  goodsId;
+            final long killId = goodsId;
             for(int i=0; i<1000; i++){
                 final long userId = i;
                 Runnable task = () -> {
-                    Result result = seckillService.startSeckilDBPCC_ONE(killId, userId);
+                    Result result = seckillService.startSeckillDBPCC_ONE(killId, userId);
                     latch.countDown();
                 };
                 executor.execute(task);
@@ -174,11 +174,78 @@ public class SeckillController {
             int skillNum = 1000;
             seckillService.cleanData(goodsId);
             final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
-            final long killId =  goodsId;
+            final long killId = goodsId;
             for(int i=0; i<1000; i++){
                 final long userId = i;
                 Runnable task = () -> {
-                    Result result = seckillService.startSeckilDBPCC_TWO(killId, userId);
+                    Result result = seckillService.startSeckillDBPCC_TWO(killId, userId);
+                    latch.countDown();
+                };
+                executor.execute(task);
+            }
+            try {
+                latch.await();// 等待所有人任务结束
+                checkSeckillCount(n, goodsId);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("耗时===>>>"+(end-start));
+        return Result.ok();
+    }
+
+
+    @GetMapping("/startDBOCC")
+    public Result startDBOCC(@RequestParam(required = false) Long goodsId) {
+        if (goodsId==null || 10000!=goodsId) {
+            return Result.error("商品ID错误");
+        }
+        long start = System.currentTimeMillis();
+        for (int n = 1; n < 1001; n++) {
+            int skillNum = 1000;
+            seckillService.cleanData(goodsId);
+            final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
+            final long killId = goodsId;
+            for (int i = 0; i < 1000; i++) {
+                final long userId = i;
+                Runnable task = () -> {
+                    //这里使用的乐观锁、可以自定义抢购数量、如果配置的抢购人数比较少、比如120:100(人数:商品) 会出现少买的情况
+                    //用户同时进入会出现更新失败的情况
+                    Result result = seckillService.startSeckillDBOCC(killId, userId, 1);
+                    latch.countDown();
+                };
+                executor.execute(task);
+            }
+            try {
+                latch.await();// 等待所有人任务结束
+                checkSeckillCount(n, goodsId);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("耗时===>>>"+(end-start));
+        return Result.ok();
+    }
+
+    @GetMapping("/startDBOCC-bySQL")
+    public Result startDBOCCBySQL(@RequestParam(required = false) Long goodsId) {
+        if (goodsId==null || 10000!=goodsId) {
+            return Result.error("商品ID错误");
+        }
+        long start = System.currentTimeMillis();
+        for (int n = 1; n < 1001; n++) {
+            int skillNum = 1000;
+            seckillService.cleanData(goodsId);
+            final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
+            final long killId = goodsId;
+            for (int i = 0; i < 1000; i++) {
+                final long userId = i;
+                Runnable task = () -> {
+                    //这里使用的乐观锁、可以自定义抢购数量、如果配置的抢购人数比较少、比如120:100(人数:商品) 会出现少买的情况
+                    //用户同时进入会出现更新失败的情况
+                    Result result = seckillService.startSeckillDBOCCBySQL(killId, userId, 1);
                     latch.countDown();
                 };
                 executor.execute(task);
