@@ -36,10 +36,10 @@ public class SeckillController {
             seckillService.cleanData(goodsId);
             int skillNum = 1000; // 抢购者远远大于商品数量
             final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
-            for(int i=0; i<skillNum; i++){
+            for(int i=0; i<skillNum; i++) {
                 final long userId = i;
                 Runnable task = () -> {
-                    seckillService.startSeckil(goodsId, userId);
+                    seckillService.startSeckill(goodsId, userId);
                     latch.countDown();
                 };
                 executor.execute(task);
@@ -103,6 +103,33 @@ public class SeckillController {
             }
         }
 
+        return Result.ok();
+    }
+
+    @GetMapping("/startAopLock")
+    public Result startAopLock(@RequestParam(required = false) Long goodsId) {
+        if (goodsId==null || 10000!=goodsId) {
+            return Result.error("商品ID错误");
+        }
+        for (int n = 1; n < 101; n++) {
+            int skillNum = 1000;
+            seckillService.cleanData(goodsId);
+            final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
+            for (int i = 0; i < 1000; i++) {
+                final long userId = i;
+                Runnable task = () -> {
+                    seckillService.startSeckilAopLock(goodsId, userId);
+                    latch.countDown();
+                };
+                executor.execute(task);
+            }
+            try {
+                latch.await();// 等待所有人任务结束
+                checkSeckillCount(n, goodsId);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         return Result.ok();
     }
 }

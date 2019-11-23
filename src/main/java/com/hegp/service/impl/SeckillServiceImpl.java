@@ -1,5 +1,6 @@
 package com.hegp.service.impl;
 
+import com.hegp.annotation.Servicelock;
 import com.hegp.domain.Result;
 import com.hegp.entity.Goods;
 import com.hegp.entity.Record;
@@ -14,6 +15,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -43,7 +45,8 @@ public class SeckillServiceImpl implements SeckillService {
     }
 
     @Override
-    public Result startSeckil(Long goodsId, Long userId) {
+    @Transactional
+    public Result startSeckill(Long goodsId, Long userId) {
         //校验库存
         Query countQuery = entityManager.createNativeQuery("SELECT total FROM shop_goods WHERE id="+goodsId);
         Integer total = Integer.parseInt(countQuery.getSingleResult().toString());
@@ -100,6 +103,14 @@ public class SeckillServiceImpl implements SeckillService {
             lock.unlock();
         }
         return Result.ok();
+    }
+
+    @Override
+    @Servicelock
+    @Transactional
+    public Result startSeckilAopLock(long goodsId, long userId) {
+        //来自码云码友<马丁的早晨>的建议 使用AOP + 锁实现
+        return startSeckill(goodsId, userId);
     }
 
     @Override
