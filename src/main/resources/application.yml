@@ -2,10 +2,10 @@ spring:
   application:
     name: hgp-test
   datasource:
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: sa
-    url: jdbc:h2:mem:test
+    driver-class-name: com.mysql.jdbc.Driver
+    username: root
+    password: root
+    url: jdbc:mysql://localhost:3306/seckill?useUnicode=true&characterEncoding=utf-8&useSSL=false
     type: com.zaxxer.hikari.HikariDataSource
     hikari:
       minimum-idle: 5
@@ -26,12 +26,12 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: update
-    database: h2
-  h2:
-    console:
-      path: /h2-console
-      enabled: true
-#      spring.h2.console.settings.web-allow-others=true //设置为true，h2 web consloe就可以在远程访问了。否则只能在本机访问。
-#      spring.h2.console.enabled=true                   //设置为true，程序开启时就会启动h2 web console(默认是false) 访问URL是 http://localhost:8080/h2-console
+    database: mysql
+    properties.hibernate.dialect: org.hibernate.dialect.MySQL5InnoDBDialect
+
+# MySQL和h2的比较，在spring.datasource.hikari.min-pool-size=10和spring.datasource.hikari.maximum-pool-size=50的参数比较
+# 可能h2用到是内存数据库，响应比较快，1000个线程用hikari数据库连接时，没有抛出 HikariPool-1 - Connection is not available, request timed out after 10000ms. 这种异常
+# 用MySQL时，1000个线程用hikari数据库连接时，抛出 HikariPool-1 - Connection is not available, request timed out after 10000ms. 异常 以及 org.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction; nested exception is org.hibernate.exception.JDBCConnectionException: Unable to acquire JDBC Connection 异常
+# 把配置参数改成 spring.datasource.hikari.min-pool-size=300和spring.datasource.hikari.maximum-pool-size=1000，不再抛数据链接数据异常，但是发现一轮秒杀，1000个线程抢100件商品，每个线程只能抢一件，发现只有十几个线程抢到商品
 server:
   port: 8085

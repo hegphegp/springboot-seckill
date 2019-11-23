@@ -32,6 +32,7 @@ public class SeckillController {
         if (goodsId==null || 10000!=goodsId) {
             return Result.error("商品ID错误");
         }
+        long start = System.currentTimeMillis();
         for (int n = 1; n < 101; n++) {
             seckillService.cleanData(goodsId);
             int skillNum = 1000; // 抢购者远远大于商品数量
@@ -51,6 +52,8 @@ public class SeckillController {
                 e.printStackTrace();
             }
         }
+        long end = System.currentTimeMillis();
+        System.out.println("耗时===>>>"+(end-start));
         return Result.ok();
     }
 
@@ -79,6 +82,7 @@ public class SeckillController {
         if (goodsId==null || 10000!=goodsId) {
             return Result.error("商品ID错误");
         }
+        long start = System.currentTimeMillis();
         for (int n = 1; n < 101; n++) {
             int skillNum = 1000;
             seckillService.cleanData(goodsId);
@@ -102,7 +106,8 @@ public class SeckillController {
                 e.printStackTrace();
             }
         }
-
+        long end = System.currentTimeMillis();
+        System.out.println("耗时===>>>"+(end-start));
         return Result.ok();
     }
 
@@ -111,6 +116,7 @@ public class SeckillController {
         if (goodsId==null || 10000!=goodsId) {
             return Result.error("商品ID错误");
         }
+        long start = System.currentTimeMillis();
         for (int n = 1; n < 101; n++) {
             int skillNum = 1000;
             seckillService.cleanData(goodsId);
@@ -130,6 +136,8 @@ public class SeckillController {
                 e.printStackTrace();
             }
         }
+        long end = System.currentTimeMillis();
+        System.out.println("耗时===>>>"+(end-start));
         return Result.ok();
     }
 
