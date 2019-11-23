@@ -37,5 +37,21 @@ public interface SeckillService {
      */
     Result startSeckilAopLock(long goodsId, long userId);
 
+    /**
+     * 秒杀 四、数据库悲观锁
+     * @param goodsId
+     * @param userId
+     * @return
+     */
+    Result startSeckilDBPCC_ONE(long goodsId, long userId);
+
+    /**
+     * 秒杀 五、数据库悲观锁
+     * @param goodsId
+     * @param userId
+     * @return
+     */
+    Result startSeckilDBPCC_TWO(long goodsId, long userId);
+
     Result reduceGoodsAndSaveWithTransactional(long goodsId, long userId);
 }

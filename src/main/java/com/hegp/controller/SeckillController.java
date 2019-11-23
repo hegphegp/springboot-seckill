@@ -132,4 +132,66 @@ public class SeckillController {
         }
         return Result.ok();
     }
+
+    @GetMapping("/startDBPCC_ONE")
+    public Result startDBPCC_ONE(@RequestParam(required = false) Long goodsId) {
+        if (goodsId==null || 10000!=goodsId) {
+            return Result.error("商品ID错误");
+        }
+        long start = System.currentTimeMillis();
+        for (int n = 1; n < 1001; n++) {
+            int skillNum = 1000;
+            seckillService.cleanData(goodsId);
+            final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
+            final long killId =  goodsId;
+            for(int i=0; i<1000; i++){
+                final long userId = i;
+                Runnable task = () -> {
+                    Result result = seckillService.startSeckilDBPCC_ONE(killId, userId);
+                    latch.countDown();
+                };
+                executor.execute(task);
+            }
+            try {
+                latch.await();// 等待所有人任务结束
+                checkSeckillCount(n, goodsId);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("耗时===>>>"+(end-start));
+        return Result.ok();
+    }
+
+    @GetMapping("/startDBPCC_TWO")
+    public Result startDPCC_TWO(@RequestParam(required = false) Long goodsId) {
+        if (goodsId==null || 10000!=goodsId) {
+            return Result.error("商品ID错误");
+        }
+        long start = System.currentTimeMillis();
+        for (int n = 1; n < 1001; n++) {
+            int skillNum = 1000;
+            seckillService.cleanData(goodsId);
+            final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
+            final long killId =  goodsId;
+            for(int i=0; i<1000; i++){
+                final long userId = i;
+                Runnable task = () -> {
+                    Result result = seckillService.startSeckilDBPCC_TWO(killId, userId);
+                    latch.countDown();
+                };
+                executor.execute(task);
+            }
+            try {
+                latch.await();// 等待所有人任务结束
+                checkSeckillCount(n, goodsId);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("耗时===>>>"+(end-start));
+        return Result.ok();
+    }
 }

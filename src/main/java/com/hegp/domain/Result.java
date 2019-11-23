@@ -1,7 +1,5 @@
 package com.hegp.domain;
 
-import java.util.Map;
-
 public class Result<T> {
 	private int code=200;
 	private String message="success";

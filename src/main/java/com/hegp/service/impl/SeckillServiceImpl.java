@@ -114,6 +114,32 @@ public class SeckillServiceImpl implements SeckillService {
     }
 
     @Override
+//	@ServiceLimit(limitType= ServiceLimit.LimitType.IP)
+    @Transactional
+    public Result startSeckilDBPCC_ONE(long goodsId, long userId) {
+        //单用户抢购一件商品或者多件都没有问题
+        Query countQuery = entityManager.createNativeQuery("SELECT total FROM shop_goods WHERE id="+goodsId+" FOR UPDATE ");
+        Integer total =  Integer.parseInt(countQuery.getSingleResult().toString());
+        if(total>0){
+            return reduceGoodsAndSave(goodsId, userId);
+        } else {
+            return Result.error("抢购失败");
+        }
+    }
+
+    @Override
+    @Transactional
+    public Result startSeckilDBPCC_TWO(long goodsId, long userId) {
+        //单用户抢购一件商品没有问题、但是抢购多件商品不建议这种写法
+        Integer total = entityManager.createNativeQuery("UPDATE shop_goods SET total=total-1 WHERE id="+goodsId+" AND total>0").executeUpdate();//UPDATE锁表
+        if(total>0) {
+            return reduceGoodsAndSave(goodsId, userId);
+        } else {
+            return Result.error("抢购失败");
+        }
+    }
+
+    @Override
     @Transactional
     public Result reduceGoodsAndSaveWithTransactional(long goodsId, long userId) {
         return reduceGoodsAndSave(goodsId, userId);
