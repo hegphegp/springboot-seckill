@@ -1,7 +1,10 @@
 package com.hegp;
 
 import com.hegp.entity.Goods;
+import com.hegp.entity.Record;
+import com.hegp.queue.SeckillQueue;
 import com.hegp.repository.GoodsRepository;
+import com.hegp.service.SeckillService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -12,6 +15,8 @@ import java.sql.Timestamp;
 @SpringBootApplication
 public class Application implements CommandLineRunner {
 
+    @Autowired
+    private SeckillService seckillService;
     @Autowired
     private GoodsRepository goodsRepository;
 
@@ -28,5 +33,13 @@ public class Application implements CommandLineRunner {
         goods.setVersion(0);
         goods.setCreateTime(new Timestamp(System.currentTimeMillis()));
         goodsRepository.save(goods);
+
+        while(true) {
+            //进程内队列
+            Record record = SeckillQueue.getMailQueue().consume();
+            if(record!=null) {
+                seckillService.startSeckill(record.getGoodsId(), record.getUserId());
+            }
+        }
     }
 }

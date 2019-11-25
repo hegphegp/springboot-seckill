@@ -1,6 +1,8 @@
 package com.hegp.controller;
 
 import com.hegp.domain.Result;
+import com.hegp.entity.Record;
+import com.hegp.queue.SeckillQueue;
 import com.hegp.service.SeckillService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -247,6 +249,48 @@ public class SeckillController {
                     //用户同时进入会出现更新失败的情况
                     Result result = seckillService.startSeckillDBOCCBySQL(killId, userId, 1);
                     latch.countDown();
+                };
+                executor.execute(task);
+            }
+            try {
+                latch.await();// 等待所有人任务结束
+                checkSeckillCount(n, goodsId);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("耗时===>>>"+(end-start));
+        return Result.ok();
+    }
+
+    @GetMapping("/startQueue")
+    public Result startQueue(@RequestParam(required = false) Long goodsId) {
+        if (goodsId==null || 10000!=goodsId) {
+            return Result.error("商品ID错误");
+        }
+        long start = System.currentTimeMillis();
+        for (int n = 1; n < 1001; n++) {
+            int skillNum = 1000;
+            seckillService.cleanData(goodsId);
+            final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
+            for (int i = 0; i < 1000; i++) {
+                final long userId = i;
+                Runnable task = () -> {
+                    Record record = new Record();
+                    record.setGoodsId(goodsId);
+                    record.setUserId(userId);
+                    try {
+                        Boolean flag = SeckillQueue.getMailQueue().produce(record);
+//                        if(flag){
+//                            LOGGER.info("用户:{}{}",kill.getUserId(),"秒杀成功");
+//                        } else {
+//                            LOGGER.info("用户:{}{}",userId,"秒杀失败");
+//                        }
+                        latch.countDown();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 };
                 executor.execute(task);
             }
