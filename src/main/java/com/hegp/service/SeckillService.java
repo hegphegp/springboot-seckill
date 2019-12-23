@@ -72,4 +72,6 @@ public interface SeckillService {
     Result startSeckillDBOCCBySQL(long goodsId, long userId, long number);
 
     Result reduceGoodsAndSaveWithTransactional(long goodsId, long userId);
+
+    void checkSeckillCount(int n, Long goodsId);
 }

@@ -1,14 +1,15 @@
 package com.hegp.service.impl;
 
 import com.hegp.annotation.Servicelock;
+import com.hegp.controller.SeckillController;
 import com.hegp.domain.Result;
 import com.hegp.entity.Goods;
 import com.hegp.entity.Record;
 import com.hegp.repository.GoodsRepository;
 import com.hegp.repository.RecordRepository;
 import com.hegp.service.SeckillService;
-import org.hibernate.query.NativeQuery;
-import org.hibernate.transform.Transformers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,14 +19,14 @@ import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class SeckillServiceImpl implements SeckillService {
+    private final static Logger logger = LoggerFactory.getLogger(SeckillController.class);
     private Lock lock = new ReentrantLock(true);//互斥锁 参数默认false，不公平锁
-
+    private int goodsTotal = 100;
     @Autowired
     private GoodsRepository goodsRepository;
     @Autowired
@@ -200,5 +201,17 @@ public class SeckillServiceImpl implements SeckillService {
     @Transactional
     public Result reduceGoodsAndSaveWithTransactional(long goodsId, long userId) {
         return reduceGoodsAndSaveRecord(goodsId, userId);
+    }
+
+    @Override
+    public void checkSeckillCount(int n, Long goodsId) {
+        Long seckillCount = seckillService.getSeckillCount(goodsId);
+        StringBuffer sb = new StringBuffer("第" + n + "轮秒杀，一共秒杀出" + seckillCount + "件商品");
+        if ((seckillCount-goodsTotal)>0) {
+            sb.append(", 超卖" + (seckillCount - goodsTotal) + "件");
+            logger.error(sb.toString());
+        } else {
+            logger.info(sb.toString());
+        }
     }
 }

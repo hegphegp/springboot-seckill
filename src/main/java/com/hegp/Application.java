@@ -5,6 +5,8 @@ import com.hegp.entity.Record;
 import com.hegp.queue.SeckillQueue;
 import com.hegp.repository.GoodsRepository;
 import com.hegp.service.SeckillService;
+import com.hegp.utils.RedissLockUtil;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -19,6 +21,8 @@ public class Application implements CommandLineRunner {
     private SeckillService seckillService;
     @Autowired
     private GoodsRepository goodsRepository;
+    @Autowired
+    private RedissonClient redissonClient;
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -26,6 +30,7 @@ public class Application implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        RedissLockUtil.setRedissonClient(redissonClient);
         Goods goods = new Goods();
         goods.setId(10000L);
         goods.setName("小米手机");

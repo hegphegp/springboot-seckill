@@ -14,11 +14,13 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 每秒下单成功量万级以上的并发系统，都应该用redis去扛并发，不应该用数据库，redis的性能比数据库高出上千倍
+ */
 @RestController
 @RequestMapping("/v1/seckill")
 public class SeckillController {
     private final static Logger logger = LoggerFactory.getLogger(SeckillController.class);
-    private int goodsTotal = 100;
     //创建线程池  调整队列数 拒绝服务
     private static ThreadPoolExecutor executor = new ThreadPoolExecutor(300,
             301,
@@ -29,14 +31,15 @@ public class SeckillController {
     @Autowired
     private SeckillService seckillService;
 
+    // 方法一，是错误的，不加锁
     @GetMapping("/start")
     public Result start(@RequestParam(required = false) Long goodsId) {
         if (goodsId==null || 10000!=goodsId) {
             return Result.error("商品ID错误");
         }
+        int skillNum = 1000; // 抢购者远远大于商品数量
         for (int n = 1; n < 101; n++) {
             seckillService.cleanData(goodsId);
-            int skillNum = 1000; // 抢购者远远大于商品数量
             final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
             for(int i=0; i<skillNum; i++) {
                 final long userId = i;
@@ -48,7 +51,7 @@ public class SeckillController {
             }
             try {
                 latch.await();// 等待所有人任务结束
-                checkSeckillCount(n, goodsId);
+                seckillService.checkSeckillCount(n, goodsId);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -56,22 +59,15 @@ public class SeckillController {
         return Result.ok();
     }
 
-    public void checkSeckillCount(int n, Long goodsId) {
-        Long seckillCount = seckillService.getSeckillCount(goodsId);
-        StringBuffer sb = new StringBuffer("第" + n + "轮秒杀，一共秒杀出" + seckillCount + "件商品");
-        if ((seckillCount-goodsTotal)>0) {
-            sb.append(", 超卖" + (seckillCount - goodsTotal) + "件");
-            logger.error(sb.toString());
-        } else {
-            logger.info(sb.toString());
-        }
-    }
 
+
+    // 方法二，用Lock加锁，但是用法错误，应该是事务结束后再释放锁
     @GetMapping("/startLock-error")
     public Result startLockError(@RequestParam(required = false) Long goodsId) {
         return startLock(goodsId, true);
     }
 
+    // 方法三，用Lock加锁，用法正确，事务结束后才释放锁
     @GetMapping("/startLock")
     public Result startLock(@RequestParam(required = false) Long goodsId) {
         return startLock(goodsId, false);
@@ -81,6 +77,7 @@ public class SeckillController {
         if (goodsId==null || 10000!=goodsId) {
             return Result.error("商品ID错误");
         }
+        long start = System.currentTimeMillis();
         for (int n = 1; n < 101; n++) {
             int skillNum = 1000;
             seckillService.cleanData(goodsId);
@@ -99,15 +96,17 @@ public class SeckillController {
             }
             try {
                 latch.await();// 等待所有人任务结束
-                checkSeckillCount(n, goodsId);
+                seckillService.checkSeckillCount(n, goodsId);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-
+        long end = System.currentTimeMillis();
+        System.out.println("耗时===>>>"+(end-start));
         return Result.ok();
     }
 
+    // 用注解修饰方法，然后用切面拦截，用一把锁限制，一次只能一个人执行
     @GetMapping("/startAopLock")
     public Result startAopLock(@RequestParam(required = false) Long goodsId) {
         if (goodsId==null || 10000!=goodsId) {
@@ -127,7 +126,7 @@ public class SeckillController {
             }
             try {
                 latch.await();// 等待所有人任务结束
-                checkSeckillCount(n, goodsId);
+                seckillService.checkSeckillCount(n, goodsId);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -156,7 +155,7 @@ public class SeckillController {
             }
             try {
                 latch.await();// 等待所有人任务结束
-                checkSeckillCount(n, goodsId);
+                seckillService.checkSeckillCount(n, goodsId);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -187,7 +186,7 @@ public class SeckillController {
             }
             try {
                 latch.await();// 等待所有人任务结束
-                checkSeckillCount(n, goodsId);
+                seckillService.checkSeckillCount(n, goodsId);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -221,7 +220,7 @@ public class SeckillController {
             }
             try {
                 latch.await();// 等待所有人任务结束
-                checkSeckillCount(n, goodsId);
+                seckillService.checkSeckillCount(n, goodsId);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -254,7 +253,7 @@ public class SeckillController {
             }
             try {
                 latch.await();// 等待所有人任务结束
-                checkSeckillCount(n, goodsId);
+                seckillService.checkSeckillCount(n, goodsId);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -270,8 +269,8 @@ public class SeckillController {
             return Result.error("商品ID错误");
         }
         long start = System.currentTimeMillis();
+        int skillNum = 1000;
         for (int n = 1; n < 1001; n++) {
-            int skillNum = 1000;
             seckillService.cleanData(goodsId);
             final CountDownLatch latch = new CountDownLatch(skillNum);//N个购买者
             for (int i = 0; i < 1000; i++) {
@@ -296,7 +295,7 @@ public class SeckillController {
             }
             try {
                 latch.await();// 等待所有人任务结束
-                checkSeckillCount(n, goodsId);
+                seckillService.checkSeckillCount(n, goodsId);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
